@@ -18,16 +18,67 @@ if [ "${OS}" = "Darwin" ]; then
         brew install --cask firefox
     fi
     
-    # Install Python if not present
-    if ! command -v python3 >/dev/null 2>&1; then
-        brew install python@3.9
-    fi
+    # Check Python version and install python-tk for the current version
+    PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    echo "Using Python version ${PYTHON_VERSION}"
+    
+    # Install python-tk for the current Python version
+    brew install python-tk@${PYTHON_VERSION} || brew install python-tk
     
     # Install other required packages
-    brew install imagemagick python-tk@3.9
+    brew install imagemagick
     
-    # Source macOS helper functions
-    source ./macos_helpers.sh
+    # Set up GUI control environment
+    # Create the helper functions directory
+    mkdir -p ~/.computer_use_helpers
+    
+    # Create the helper functions file
+    cat > ~/.computer_use_helpers/macos_functions.sh << 'EOF'
+#!/bin/bash
+
+type_text() {
+    /usr/bin/osascript << APPLESCRIPT
+tell application "System Events"
+    keystroke "$1"
+end tell
+APPLESCRIPT
+}
+
+press_key() {
+    /usr/bin/osascript << APPLESCRIPT
+tell application "System Events"
+    key code $1
+end tell
+APPLESCRIPT
+}
+
+open_url() {
+    /usr/bin/osascript << APPLESCRIPT
+tell application "Firefox"
+    activate
+    delay 1
+    open location "$1"
+end tell
+APPLESCRIPT
+}
+EOF
+
+    # Make the helper functions executable
+    chmod +x ~/.computer_use_helpers/macos_functions.sh
+    
+    # Source the helper functions
+    source ~/.computer_use_helpers/macos_functions.sh
+    
+    # Add to .bashrc or .zshrc to ensure functions are always available
+    if [ -f ~/.zshrc ]; then
+        grep -q "source ~/.computer_use_helpers/macos_functions.sh" ~/.zshrc || echo "source ~/.computer_use_helpers/macos_functions.sh" >> ~/.zshrc
+    fi
+    if [ -f ~/.bashrc ]; then
+        grep -q "source ~/.computer_use_helpers/macos_functions.sh" ~/.bashrc || echo "source ~/.computer_use_helpers/macos_functions.sh" >> ~/.bashrc
+    fi
+    
+    # Create the screenshots directory if it doesn't exist
+    mkdir -p ~/.anthropic/screenshots
 else
     # Original Linux setup code here
     if command -v apt; then

@@ -70,9 +70,13 @@ class TerminalGUI:
         """Type text with specified delay between keystrokes."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            # Use the type_text helper function
-            escaped_text = text.replace("'", "'\\''")
-            subprocess.run(["/bin/bash", "-c", f"type_text '{escaped_text}'"])
+            # Use osascript directly for better reliability
+            escaped_text = text.replace('"', '\\"')
+            subprocess.run([
+                "osascript",
+                "-e",
+                f'tell application "System Events" to keystroke "{escaped_text}"'
+            ])
             time.sleep(delay_ms / 1000)  # Convert ms to seconds
         else:
             subprocess.run(["xdotool", "type", "--delay", str(delay_ms), text],
@@ -173,8 +177,14 @@ class TerminalGUI:
             app_name = app_map.get(app_name, app_name.capitalize())
             
             if url:
-                # Use the open_url helper function
-                subprocess.run(["/bin/bash", "-c", f"open_url '{url}'"])
+                # Use osascript directly for better reliability
+                subprocess.run([
+                    "osascript",
+                    "-e", 'tell application "Firefox"',
+                    "-e", "activate",
+                    "-e", f'open location "{url}"',
+                    "-e", "end tell"
+                ])
             else:
                 # Just open the app
                 subprocess.run(["open", "-a", app_name])

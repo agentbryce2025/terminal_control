@@ -17,7 +17,7 @@ from .base import BaseAnthropicTool, ToolError, ToolResult
 from .run import run
 from ..terminal_gui import TerminalGUI
 
-OUTPUT_DIR = "/tmp/outputs"
+OUTPUT_DIR = os.path.expanduser("~/.anthropic/screenshots")
 TYPING_DELAY_MS = 12
 TYPING_GROUP_SIZE = 50
 
