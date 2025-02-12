@@ -113,11 +113,40 @@ You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential
 
 ### Using the Terminal Interface
 
-Once the container is running, you'll be presented with a terminal interface. The interface will automatically load your API key from the environment variable or `~/.anthropic/api_key` file.
+Once the container is running, you'll be presented with a terminal interface. Here's how to use it:
 
-Screenshots taken during the session will be saved to `~/.anthropic/screenshots/` directory. The container also stores other settings like the custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+1. **Authentication**: The interface will automatically load your API key from:
+   - The `ANTHROPIC_API_KEY` environment variable, or
+   - The `~/.anthropic/api_key` file
 
-You can interact with the agent by typing your commands in the terminal. The agent will display its responses, tool usage, and indicate when screenshots are taken and where they are saved.
+2. **Basic Usage**:
+   - Type your commands or questions in plain text and press Enter
+   - Claude will respond and may use various tools to accomplish tasks
+   - The interface shows all tool usage and their results in real-time
+   - Use Ctrl+C or Ctrl+D to exit the interface
+
+3. **Screenshots and Files**:
+   - Screenshots are automatically saved to `~/.anthropic/screenshots/` directory
+   - Each screenshot is timestamped for easy reference
+   - The `~/.anthropic/` directory stores other settings like custom system prompts
+   - Mount this directory to persist settings between container runs
+
+4. **Example Interactions**:
+   ```
+   You: Open Firefox and go to anthropic.com
+   Assistant: I'll help you open Firefox and navigate to anthropic.com...
+   Tool: Moving mouse to Firefox icon...
+   Tool: Clicking...
+   Tool: Waiting for Firefox to open...
+   Tool: Moving to address bar...
+   Tool: Typing "anthropic.com"...
+   Tool: Screenshot saved to: ~/.anthropic/screenshots/screenshot_20250212_012345.png
+   ```
+
+5. **Error Handling**:
+   - The interface will display any errors that occur during tool usage
+   - API errors will be shown clearly with relevant error messages
+   - You can always start a new interaction by typing a new command
 
 ## Screen size
 
@@ -153,4 +182,4 @@ docker run \
     -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
-The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
+The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. The terminal interface will automatically reload when you modify the source files.
