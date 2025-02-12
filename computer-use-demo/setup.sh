@@ -98,8 +98,18 @@ case "${OS}" in
             fi
         }
         
-        # Install required packages
-        install_brew_package tiger-vnc     # VNC server
+        # Install and configure TigerVNC
+        echo "Installing and configuring TigerVNC..."
+        brew install tiger-vnc
+        
+        # Create VNC directory and configuration
+        mkdir -p ~/.vnc
+        if [ ! -f ~/.vnc/config ]; then
+            cat > ~/.vnc/config << EOF
+geometry=1024x768
+localhost
+EOF
+        fi
         
         # NoVNC setup for Mac
         if ! command_exists npm; then
