@@ -1,28 +1,41 @@
 # Anthropic Computer Use Terminal Demo
 
-This is a modified version of the Anthropic Computer Use Demo that removes the web UI dependency and provides a pure terminal-based interface while maintaining all the original computer use functionality.
+This is a modified version of the Anthropic Computer Use Demo that removes the web UI dependency and provides a pure terminal-based interface while maintaining all the original computer use functionality. The setup now supports both Linux and macOS systems.
 
 ## Quick Start
 
-1. Install system dependencies (on Ubuntu/Debian):
+### For Linux (Ubuntu/Debian):
+1. Install system dependencies:
    ```bash
    sudo apt-get update
    sudo apt-get install -y xvfb x11vnc novnc mutter tint2 firefox-esr xdotool imagemagick python3-tk python3-dev
    ```
 
-2. Run the setup script:
+### For macOS:
+1. The setup script will automatically install Homebrew and required dependencies including:
+   - XQuartz (X11 server)
+   - TigerVNC (VNC server)
+   - noVNC (HTML5 VNC client)
+   - Mutter (Window manager)
+   - Firefox
+   - xdotool
+   - ImageMagick
+   - Python-tk
+
+### For both systems:
+1. Run the setup script:
    ```bash
    ./setup.sh
    ```
 
-3. Set your Anthropic API key:
+2. Set your Anthropic API key:
    ```bash
    export ANTHROPIC_API_KEY=your_api_key_here
    # OR
    echo "your_api_key_here" > ~/.anthropic/api_key
    ```
 
-4. Run the agent:
+3. Run the agent:
    ```bash
    ./run_agent.sh
    ```
@@ -34,6 +47,7 @@ This is a modified version of the Anthropic Computer Use Demo that removes the w
 - Screenshot saving and management
 - Environment variable configuration
 - Support for Anthropic API, Bedrock, and Vertex
+- Cross-platform support (Linux and macOS)
 
 ## Commands
 
@@ -79,7 +93,9 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 > [!IMPORTANT]
 > The components are weakly separated: the agent loop runs in the container being controlled by Claude, can only be used by one session at a time, and must be restarted or reset between sessions if necessary.
 
-## Quickstart: running the Docker container
+## Docker Support
+
+The Docker container provides a consistent environment for running the demo across different platforms.
 
 ### Anthropic API
 
@@ -92,143 +108,6 @@ docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
-```
-
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-### Bedrock
-
-> [!TIP]
-> To use the new Claude 3.5 Sonnet on Bedrock, you first need to [request model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html).
-
-You'll need to pass in AWS credentials with appropriate permissions to use Claude on Bedrock.
-
-You have a few options for authenticating with Bedrock. See the [boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables) for more details and options.
-
-#### Option 1: (suggested) Use the host's AWS credentials file and AWS profile
-
-```bash
-export AWS_PROFILE=<your_aws_profile>
-docker run \
-    -e API_PROVIDER=bedrock \
-    -e AWS_PROFILE=$AWS_PROFILE \
-    -e AWS_REGION=us-west-2 \
-    -v $HOME/.aws:/home/computeruse/.aws \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
-```
-
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-#### Option 2: Use an access key and secret
-
-```bash
-export AWS_ACCESS_KEY_ID=%your_aws_access_key%
-export AWS_SECRET_ACCESS_KEY=%your_aws_secret_access_key%
-export AWS_SESSION_TOKEN=%your_aws_session_token%
-docker run \
-    -e API_PROVIDER=bedrock \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-    -e AWS_REGION=us-west-2 \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
-```
-
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-### Vertex
-
-You'll need to pass in Google Cloud credentials with appropriate permissions to use Claude on Vertex.
-
-```bash
-docker build . -t computer-use-demo
-gcloud auth application-default login
-export VERTEX_REGION=%your_vertex_region%
-export VERTEX_PROJECT_ID=%your_vertex_project_id%
-docker run \
-    -e API_PROVIDER=vertex \
-    -e CLOUD_ML_REGION=$VERTEX_REGION \
-    -e ANTHROPIC_VERTEX_PROJECT_ID=$VERTEX_PROJECT_ID \
-    -v $HOME/.config/gcloud/application_default_credentials.json:/home/computeruse/.config/gcloud/application_default_credentials.json \
-    -it computer-use-demo
-```
-
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
-
-You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
-
-### Using the Terminal Interface
-
-Once the container is running, you'll be presented with a terminal interface that provides a direct way to interact with Claude's computer use capabilities. Here's a comprehensive guide on how to use it:
-
-#### Setup and Authentication
-
-1. **API Key Configuration**:
-   - Set via `ANTHROPIC_API_KEY` environment variable
-   - Or create `~/.anthropic/api_key` file with your key
-   - The interface will validate the API key on startup
-
-2. **Display Settings**:
-   - Default resolution: 1024x768 (XGA)
-   - Configurable via `WIDTH` and `HEIGHT` environment variables
-   - Display number configurable via `DISPLAY_NUM` (defaults to 1)
-
-#### Available Commands
-
-1. **Special Commands**:
-   - `help` - Show available commands and usage information
-   - `status` - Display current environment status
-   - `clear` - Reset conversation history
-   - `exit` - Quit the program
-
-2. **Basic Usage**:
-   - Type natural language commands or questions
-   - Claude will respond and use appropriate tools
-   - Real-time display of tool usage and results
-   - Use Ctrl+C to interrupt long operations
-
-3. **Screenshots and Files**:
-   - Auto-saved to `~/.anthropic/screenshots/`
-   - Timestamped filenames for easy reference
-   - Directory structure created automatically
-   - Mount `~/.anthropic/` to persist between runs
-
-#### Example Interactions
-
-```
-You: Open Firefox and go to anthropic.com
-Assistant: I'll help you navigate to anthropic.com...
-Tool: Moving mouse to Firefox icon...
-Tool: Clicking...
-Tool: Waiting for Firefox to open...
-Tool: Moving to address bar...
-Tool: Typing "anthropic.com"...
-Tool: Screenshot saved to: ~/.anthropic/screenshots/screenshot_20250212_012345.png
-
-You: status
-Environment Status:
-Display: :1
-Resolution: 1024x768
-API Provider: anthropic
-Model: claude-3-5-sonnet-20241022
-Messages in history: 2
-X Server: Running
-
-You: help
-Available Commands:
-  help    - Show this help message
-  status  - Show current environment status
-  clear   - Clear conversation history
-  exit    - Exit the program
-
-For general usage:
-- Type your questions or commands naturally
-- Use Ctrl+C to interrupt a long-running operation
-- Screenshots are saved in ~/.anthropic/screenshots/
 ```
 
 ### Terminal-Based GUI Control
@@ -267,7 +146,7 @@ Example usage:
 
 This system allows for scripting of GUI interactions while maintaining full compatibility with the original computer use functionality.
 
-#### Error Handling and Troubleshooting
+## Error Handling and Troubleshooting
 
 1. **Startup Validation**:
    - Checks for API key presence
@@ -292,27 +171,6 @@ This system allows for scripting of GUI interactions while maintaining full comp
    - `clear` to reset on conversation issues
    - Ctrl+C to interrupt hung operations
    - You can continue after most errors
-
-## Screen size
-
-Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. For example:
-
-```bash
-docker run \
-    -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -e WIDTH=1920 \
-    -e HEIGHT=1080 \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
-```
-
-We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://en.wikipedia.org/wiki/Display_resolution_standards#XGA) to avoid issues related to [image resizing](https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size).
-Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
-
-
-When implementing computer use yourself, we recommend using XGA resolution (1024x768):
-- For higher resolutions: Scale the image down to XGA and let the model interact with this scaled version, then map the coordinates back to the original resolution proportionally.
-- For lower resolutions or smaller devices (e.g. mobile devices): Add black padding around the display area until it reaches 1024x768.
 
 ## Development
 
