@@ -231,6 +231,42 @@ For general usage:
 - Screenshots are saved in ~/.anthropic/screenshots/
 ```
 
+### Terminal-Based GUI Control
+
+This implementation includes a powerful terminal-based GUI control system that allows direct command-line interaction with the graphical interface. The `terminal_control.sh` script provides easy access to these features:
+
+```bash
+./terminal_control.sh <command> [arguments]
+```
+
+Available commands:
+- `move <x> <y>` - Move mouse cursor to coordinates
+- `click [right|middle]` - Perform mouse click
+- `doubleclick` - Perform double click
+- `drag <x> <y>` - Drag from current position
+- `type <text>` - Type text
+- `key <key>` - Press a key
+- `screenshot` - Take a screenshot
+- `position` - Get cursor position
+- `launch <app>` - Launch application
+
+Example usage:
+```bash
+# Move mouse to coordinates 100,200
+./terminal_control.sh move 100 200
+
+# Type text
+./terminal_control.sh type "Hello, World!"
+
+# Press Enter key
+./terminal_control.sh key Return
+
+# Take screenshot
+./terminal_control.sh screenshot
+```
+
+This system allows for scripting of GUI interactions while maintaining full compatibility with the original computer use functionality.
+
 #### Error Handling and Troubleshooting
 
 1. **Startup Validation**:
