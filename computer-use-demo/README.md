@@ -41,10 +41,6 @@ export ANTHROPIC_API_KEY=%your_api_key%
 docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
@@ -69,10 +65,6 @@ docker run \
     -e AWS_REGION=us-west-2 \
     -v $HOME/.aws:/home/computeruse/.aws \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
@@ -91,10 +83,6 @@ docker run \
     -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
     -e AWS_REGION=us-west-2 \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
@@ -114,10 +102,6 @@ docker run \
     -e CLOUD_ML_REGION=$VERTEX_REGION \
     -e ANTHROPIC_VERTEX_PROJECT_ID=$VERTEX_PROJECT_ID \
     -v $HOME/.config/gcloud/application_default_credentials.json:/home/computeruse/.config/gcloud/application_default_credentials.json \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -it computer-use-demo
 ```
 
@@ -143,10 +127,6 @@ Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. F
 docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -e WIDTH=1920 \
     -e HEIGHT=1080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
@@ -170,10 +150,6 @@ docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ `# mount local python module for development` \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
     -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
