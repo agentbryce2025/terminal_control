@@ -109,11 +109,12 @@ case "${OS}" in
         fi
         npm install -g novnc
         
-        # For Mac, we'll use yabai as window manager instead of mutter
-        if ! brew tap homebrew/cask-versions &>/dev/null; then
-            brew tap homebrew/cask-versions
+        # For Mac, we'll use Rectangle for window management
+        if ! brew list --cask rectangle &>/dev/null; then
+            brew install --cask rectangle
+        else
+            echo "Rectangle is already installed"
         fi
-        brew install koekeishiya/formulae/yabai
         
         # Install Firefox using cask
         if [ ! -d "/Applications/Firefox.app" ]; then
@@ -128,11 +129,7 @@ case "${OS}" in
         # Install Python Tk support
         brew install python-tk || brew install python-tk@3.9 || echo "Failed to install python-tk, please install manually"
         
-        # Install additional Mac-specific requirements
-        brew install --cask rectangle      # Window management helper
-        
-        # Start yabai service
-        brew services start yabai
+        # We're already installing Rectangle above, so no additional window management needed
         
         # Create necessary XQuartz configurations
         defaults write org.xquartz.X11 enable_iglx -bool true
