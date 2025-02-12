@@ -1,0 +1,9 @@
+anthropic>=0.17.0
+httpx
+boto3
+google-auth
+pynput
+pillow
+opencv-python
+python-xlib
+PyAutoGUI

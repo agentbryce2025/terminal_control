@@ -1,0 +1,14 @@
+Metadata-Version: 2.2
+Name: computer-use-demo
+Version: 0.1.0
+Summary: Claude Computer Use Demo with Terminal Interface
+License-File: LICENSE
+Requires-Dist: anthropic>=0.17.0
+Requires-Dist: httpx
+Requires-Dist: boto3
+Requires-Dist: google-auth
+Requires-Dist: pynput
+Requires-Dist: pillow
+Requires-Dist: opencv-python
+Requires-Dist: python-xlib
+Requires-Dist: PyAutoGUI

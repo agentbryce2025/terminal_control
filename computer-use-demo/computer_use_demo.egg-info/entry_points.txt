@@ -1,0 +1,2 @@
+[console_scripts]
+computer-agent = computer_use_demo.terminal:main

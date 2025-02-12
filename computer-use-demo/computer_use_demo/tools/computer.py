@@ -93,17 +93,51 @@ class ComputerTool(BaseAnthropicTool):
     def __init__(self):
         super().__init__()
 
-        self.width = int(os.getenv("WIDTH") or 0)
-        self.height = int(os.getenv("HEIGHT") or 0)
-        assert self.width and self.height, "WIDTH, HEIGHT must be set"
-        if (display_num := os.getenv("DISPLAY_NUM")) is not None:
+        # Default to 1024x768 if not specified
+        self.width = int(os.getenv("WIDTH") or 1024)
+        self.height = int(os.getenv("HEIGHT") or 768)
+        
+        # Get display number, default to 1
+        display_num = os.getenv("DISPLAY_NUM")
+        if display_num is not None:
             self.display_num = int(display_num)
-            self._display_prefix = f"DISPLAY=:{self.display_num} "
         else:
-            self.display_num = None
-            self._display_prefix = ""
+            self.display_num = 1
 
+        # Set display prefix
+        self._display_prefix = f"DISPLAY=:{self.display_num} "
         self.xdotool = f"{self._display_prefix}xdotool"
+
+        # Ensure X server is running
+        self._ensure_x_server()
+
+    def _ensure_x_server(self):
+        """Ensure X server is running on the specified display."""
+        try:
+            import subprocess
+            # Check if Xvfb is running
+            result = subprocess.run(['pgrep', 'Xvfb'], capture_output=True, text=True)
+            if result.returncode != 0:
+                # Start Xvfb if not running
+                subprocess.Popen(['Xvfb', f':{self.display_num}', '-screen', '0', f'{self.width}x{self.height}x24'])
+                import time
+                time.sleep(2)  # Wait for X server to start
+
+            # Check if window manager is running
+            result = subprocess.run(['pgrep', 'mutter'], capture_output=True, text=True)
+            if result.returncode != 0:
+                # Start window manager if not running
+                subprocess.Popen([f'DISPLAY=:{self.display_num}', 'mutter', '--replace'])
+                time.sleep(2)
+
+            # Check if taskbar is running
+            result = subprocess.run(['pgrep', 'tint2'], capture_output=True, text=True)
+            if result.returncode != 0:
+                # Start taskbar if not running
+                subprocess.Popen([f'DISPLAY=:{self.display_num}', 'tint2'])
+                time.sleep(1)
+        except Exception as e:
+            print(f"Warning: Error ensuring X server: {e}")
 
     async def __call__(
         self,
