@@ -96,26 +96,51 @@ class TerminalGUI:
     def take_screenshot(self, output_path: str) -> None:
         """Take a screenshot and save it to the specified path."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        temp_path = output_path + ".temp"
+        
         if os_type == "Darwin":
             try:
-                # Use screencapture (native macOS tool)
-                subprocess.run(["screencapture", "-x", output_path])
-            except FileNotFoundError:
-                # Fallback to imagemagick's import if available
+                # Use screencapture (native macOS tool) to take initial screenshot
+                subprocess.run(["screencapture", "-x", temp_path])
+                # Compress with convert (from ImageMagick)
                 try:
-                    subprocess.run(["import", "-window", "root", output_path],
-                                env={"DISPLAY": self.display})
+                    subprocess.run([
+                        "convert", temp_path,
+                        "-quality", "60",
+                        "-resize", "1024x768>",
+                        output_path
+                    ])
+                    os.remove(temp_path)
                 except FileNotFoundError:
-                    raise RuntimeError("Screenshot failed. On macOS, ensure 'screencapture' is available (should be built-in) or install ImageMagick via 'brew install imagemagick'")
+                    # If ImageMagick isn't available, try to use sips (built into macOS)
+                    subprocess.run([
+                        "sips",
+                        "-s", "format", "jpeg",
+                        "-s", "formatOptions", "60",
+                        "--resampleHeightWidth", "768", "1024",
+                        temp_path,
+                        "--out", output_path
+                    ])
+                    os.remove(temp_path)
+            except FileNotFoundError:
+                raise RuntimeError("Screenshot failed. On macOS, ensure 'screencapture' is available (should be built-in)")
         else:
             # On Linux, try scrot first, then fall back to import
             try:
-                subprocess.run(["scrot", output_path],
+                subprocess.run(["scrot", "-q", "60", output_path],
                              env={"DISPLAY": self.display})
             except FileNotFoundError:
                 try:
                     subprocess.run(["import", "-window", "root", output_path],
-                                 env={"DISPLAY": self.display})
+                                env={"DISPLAY": self.display})
+                    # Compress with convert
+                    subprocess.run([
+                        "convert", output_path,
+                        "-quality", "60",
+                        "-resize", "1024x768>",
+                        temp_path
+                    ])
+                    os.rename(temp_path, output_path)
                 except FileNotFoundError:
                     raise RuntimeError("No screenshot tool found. On Linux, please install either 'scrot' or 'imagemagick'")
 
