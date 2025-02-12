@@ -1,3 +1,17 @@
+[project]
+name = "computer-use-demo"
+version = "0.1.0"
+description = "Claude Computer Use Demo with Terminal Interface"
+dependencies = [
+    "anthropic>=0.17.0",
+    "httpx",
+    "boto3",  # For AWS Bedrock support
+    "google-auth",  # For Vertex AI support
+]
+
+[project.scripts]
+computer-agent = "computer_use_demo.terminal:main"
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
