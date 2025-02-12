@@ -113,40 +113,99 @@ You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential
 
 ### Using the Terminal Interface
 
-Once the container is running, you'll be presented with a terminal interface. Here's how to use it:
+Once the container is running, you'll be presented with a terminal interface that provides a direct way to interact with Claude's computer use capabilities. Here's a comprehensive guide on how to use it:
 
-1. **Authentication**: The interface will automatically load your API key from:
-   - The `ANTHROPIC_API_KEY` environment variable, or
-   - The `~/.anthropic/api_key` file
+#### Setup and Authentication
+
+1. **API Key Configuration**:
+   - Set via `ANTHROPIC_API_KEY` environment variable
+   - Or create `~/.anthropic/api_key` file with your key
+   - The interface will validate the API key on startup
+
+2. **Display Settings**:
+   - Default resolution: 1024x768 (XGA)
+   - Configurable via `WIDTH` and `HEIGHT` environment variables
+   - Display number configurable via `DISPLAY_NUM` (defaults to 1)
+
+#### Available Commands
+
+1. **Special Commands**:
+   - `help` - Show available commands and usage information
+   - `status` - Display current environment status
+   - `clear` - Reset conversation history
+   - `exit` - Quit the program
 
 2. **Basic Usage**:
-   - Type your commands or questions in plain text and press Enter
-   - Claude will respond and may use various tools to accomplish tasks
-   - The interface shows all tool usage and their results in real-time
-   - Use Ctrl+C or Ctrl+D to exit the interface
+   - Type natural language commands or questions
+   - Claude will respond and use appropriate tools
+   - Real-time display of tool usage and results
+   - Use Ctrl+C to interrupt long operations
 
 3. **Screenshots and Files**:
-   - Screenshots are automatically saved to `~/.anthropic/screenshots/` directory
-   - Each screenshot is timestamped for easy reference
-   - The `~/.anthropic/` directory stores other settings like custom system prompts
-   - Mount this directory to persist settings between container runs
+   - Auto-saved to `~/.anthropic/screenshots/`
+   - Timestamped filenames for easy reference
+   - Directory structure created automatically
+   - Mount `~/.anthropic/` to persist between runs
 
-4. **Example Interactions**:
-   ```
-   You: Open Firefox and go to anthropic.com
-   Assistant: I'll help you open Firefox and navigate to anthropic.com...
-   Tool: Moving mouse to Firefox icon...
-   Tool: Clicking...
-   Tool: Waiting for Firefox to open...
-   Tool: Moving to address bar...
-   Tool: Typing "anthropic.com"...
-   Tool: Screenshot saved to: ~/.anthropic/screenshots/screenshot_20250212_012345.png
-   ```
+#### Example Interactions
 
-5. **Error Handling**:
-   - The interface will display any errors that occur during tool usage
-   - API errors will be shown clearly with relevant error messages
-   - You can always start a new interaction by typing a new command
+```
+You: Open Firefox and go to anthropic.com
+Assistant: I'll help you navigate to anthropic.com...
+Tool: Moving mouse to Firefox icon...
+Tool: Clicking...
+Tool: Waiting for Firefox to open...
+Tool: Moving to address bar...
+Tool: Typing "anthropic.com"...
+Tool: Screenshot saved to: ~/.anthropic/screenshots/screenshot_20250212_012345.png
+
+You: status
+Environment Status:
+Display: :1
+Resolution: 1024x768
+API Provider: anthropic
+Model: claude-3-5-sonnet-20241022
+Messages in history: 2
+X Server: Running
+
+You: help
+Available Commands:
+  help    - Show this help message
+  status  - Show current environment status
+  clear   - Clear conversation history
+  exit    - Exit the program
+
+For general usage:
+- Type your questions or commands naturally
+- Use Ctrl+C to interrupt a long-running operation
+- Screenshots are saved in ~/.anthropic/screenshots/
+```
+
+#### Error Handling and Troubleshooting
+
+1. **Startup Validation**:
+   - Checks for API key presence
+   - Validates X server connection
+   - Verifies screenshot directory access
+   - Reports any setup issues
+
+2. **Runtime Error Handling**:
+   - Clear error messages for API issues
+   - Tool execution error reporting
+   - Ability to continue after errors
+   - Status command for diagnostics
+
+3. **Common Issues**:
+   - X server connection problems
+   - Screenshot directory permissions
+   - API authentication errors
+   - Tool execution failures
+
+4. **Recovery Options**:
+   - Use `status` to check environment
+   - `clear` to reset on conversation issues
+   - Ctrl+C to interrupt hung operations
+   - You can continue after most errors
 
 ## Screen size
 
