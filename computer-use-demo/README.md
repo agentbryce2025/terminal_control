@@ -2,6 +2,56 @@
 
 This is a modified version of the Anthropic Computer Use Demo that removes the web UI dependency and provides a pure terminal-based interface while maintaining all the original computer use functionality.
 
+## Quick Start
+
+1. Install system dependencies (on Ubuntu/Debian):
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y xvfb x11vnc novnc mutter tint2 firefox-esr xdotool imagemagick python3-tk python3-dev
+   ```
+
+2. Run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+3. Set your Anthropic API key:
+   ```bash
+   export ANTHROPIC_API_KEY=your_api_key_here
+   # OR
+   echo "your_api_key_here" > ~/.anthropic/api_key
+   ```
+
+4. Run the agent:
+   ```bash
+   ./run_agent.sh
+   ```
+
+## Features
+
+- Pure terminal-based interface
+- Full computer use functionality
+- Screenshot saving and management
+- Environment variable configuration
+- Support for Anthropic API, Bedrock, and Vertex
+
+## Commands
+
+Available in the terminal interface:
+
+- `help` - Show available commands
+- `status` - Show current environment status
+- `clear` - Clear conversation history
+- `exit` - Exit the program
+
+## Environment Variables
+
+- `DISPLAY` - X11 display (default: :1)
+- `WIDTH` - Screen width (default: 1024)
+- `HEIGHT` - Screen height (default: 768)
+- `ANTHROPIC_API_KEY` - Your Anthropic API key
+- `API_PROVIDER` - Choose between 'anthropic', 'bedrock', or 'vertex'
+
 > [!CAUTION]
 > Computer use is a beta feature. Please be aware that computer use poses unique risks that are distinct from standard API features or chat interfaces. These risks are heightened when using computer use to interact with the internet. To minimize risks, consider taking precautions such as:
 >
