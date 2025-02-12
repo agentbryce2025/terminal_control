@@ -7,6 +7,11 @@ dependencies = [
     "httpx",
     "boto3",  # For AWS Bedrock support
     "google-auth",  # For Vertex AI support
+    "pynput",  # For keyboard and mouse control
+    "pillow",  # For image processing
+    "opencv-python",  # For screen capture
+    "python-xlib",  # For X11 integration
+    "PyAutoGUI",  # For GUI automation
 ]
 
 [project.scripts]
