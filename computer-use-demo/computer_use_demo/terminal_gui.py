@@ -101,9 +101,13 @@ class TerminalGUI:
             subprocess.run(["screencapture", "-x", output_path],
                          env={"DISPLAY": self.display})
         else:
-            # Use import on Linux
-            subprocess.run(["import", "-window", "root", output_path],
-                         env={"DISPLAY": self.display})
+            # Try scrot first, fall back to import on Linux
+            try:
+                subprocess.run(["scrot", output_path],
+                             env={"DISPLAY": self.display})
+            except FileNotFoundError:
+                subprocess.run(["import", "-window", "root", output_path],
+                             env={"DISPLAY": self.display})
 
     def start_application(self, app_name: str) -> None:
         """Start an application."""
