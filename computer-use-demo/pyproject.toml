@@ -17,6 +17,15 @@ dependencies = [
 [project.scripts]
 computer-agent = "computer_use_demo.terminal:main"
 
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-asyncio",
+    "pyright",
+    "ruff",
+]
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
