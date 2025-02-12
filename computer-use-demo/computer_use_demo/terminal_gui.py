@@ -98,17 +98,15 @@ class TerminalGUI:
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
             try:
-                # First try screencapture (default on macOS)
+                # Use screencapture (native macOS tool)
                 subprocess.run(["screencapture", "-x", output_path])
             except FileNotFoundError:
+                # Fallback to imagemagick's import if available
                 try:
-                    # If screencapture fails, try scrot (if user has it installed via brew)
-                    subprocess.run(["scrot", output_path],
-                                env={"DISPLAY": self.display})
-                except FileNotFoundError:
-                    # Last resort, try imagemagick's import
                     subprocess.run(["import", "-window", "root", output_path],
                                 env={"DISPLAY": self.display})
+                except FileNotFoundError:
+                    raise RuntimeError("Screenshot failed. On macOS, ensure 'screencapture' is available (should be built-in) or install ImageMagick via 'brew install imagemagick'")
         else:
             # On Linux, try scrot first, then fall back to import
             try:
@@ -119,7 +117,7 @@ class TerminalGUI:
                     subprocess.run(["import", "-window", "root", output_path],
                                  env={"DISPLAY": self.display})
                 except FileNotFoundError:
-                    raise RuntimeError("No screenshot tool found. Please install either 'scrot' or 'imagemagick'")
+                    raise RuntimeError("No screenshot tool found. On Linux, please install either 'scrot' or 'imagemagick'")
 
     def start_application(self, app_name: str) -> None:
         """Start an application."""
