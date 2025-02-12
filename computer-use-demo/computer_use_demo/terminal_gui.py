@@ -61,7 +61,19 @@ class TerminalGUI:
         """Move mouse cursor to specified coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin" and MacOSGUI is not None:
-            MacOSGUI.move_mouse(x, y)
+            try:
+                # Try direct movement first
+                MacOSGUI.move_mouse(x, y)
+            except subprocess.CalledProcessError:
+                # If that fails, try alternative method with System Events
+                script = f'''
+                tell application "System Events"
+                    tell process "Finder"
+                        click at {{{x}, {y}}}
+                    end tell
+                end tell
+                '''
+                subprocess.run(["osascript", "-e", script])
         else:
             subprocess.run(["xdotool", "mousemove", "--sync", str(x), str(y)],
                           env={"DISPLAY": self.display})
@@ -70,13 +82,33 @@ class TerminalGUI:
         """Click mouse button (1=left, 2=middle, 3=right)."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin" and MacOSGUI is not None:
-            current_app = subprocess.check_output(["osascript", "-e", 'tell application "System Events" to get name of first process whose frontmost is true']).decode().strip()
-            if double:
-                MacOSGUI.click_element(current_app, "double click")
-                time.sleep(0.1)
-                MacOSGUI.click_element(current_app, "double click")
-            else:
-                MacOSGUI.click_element(current_app, "click")
+            try:
+                # Try simplified click first
+                script = '''
+                    tell application "System Events"
+                        click at (get mouse location)
+                    end tell
+                '''
+                if double:
+                    script = '''
+                        tell application "System Events"
+                            click at (get mouse location)
+                            delay 0.1
+                            click at (get mouse location)
+                        end tell
+                    '''
+                subprocess.run(["osascript", "-e", script])
+            except subprocess.CalledProcessError:
+                # Fall back to alternative click method
+                frontmost_app = MacOSGUI.get_frontmost_app()
+                script = f'''
+                    tell application "System Events"
+                        tell process "{frontmost_app}"
+                            perform action "AXPress" at {{0, 0}}
+                        end tell
+                    end tell
+                '''
+                subprocess.run(["osascript", "-e", script])
         else:
             if double:
                 subprocess.run(["xdotool", "click", "--repeat", "2", "--delay", "500", str(button)],
@@ -278,8 +310,7 @@ class TerminalGUI:
     def start_application(self, app_name: str, url: str = None) -> None:
         """Start an application."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin":
-            # On macOS, use the 'open' command
+        if os_type == "Darwin" and MacOSGUI is not None:
             app_name = app_name.lower()
             
             # Map common application names
@@ -294,15 +325,11 @@ class TerminalGUI:
             
             app_name = app_map.get(app_name, app_name.capitalize())
             
-            if url:
-                # Open URL with the specified application
-                subprocess.run(["open", "-a", app_name, url])
-            else:
-                # Just open the application
-                subprocess.run(["open", "-a", app_name])
-            
-            # Give the application a moment to start
-            subprocess.run(["sleep", "2"])
+            # Launch and activate the application
+            MacOSGUI.launch_app(app_name, url)
+            time.sleep(1)  # Short wait to ensure app starts
+            MacOSGUI.activate_app(app_name)
+            time.sleep(1)  # Wait for activation
         else:
             if url and app_name in ["firefox", "firefox-esr", "chrome", "chromium"]:
                 subprocess.Popen([app_name, url], env={"DISPLAY": self.display})
