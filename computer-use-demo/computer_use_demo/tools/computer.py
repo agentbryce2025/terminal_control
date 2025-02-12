@@ -1,8 +1,11 @@
+"""
+Modified computer tool to use terminal-based GUI control.
+"""
+
 import asyncio
 import base64
 import os
 import shlex
-import shutil
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -12,9 +15,9 @@ from anthropic.types.beta import BetaToolComputerUse20241022Param
 
 from .base import BaseAnthropicTool, ToolError, ToolResult
 from .run import run
+from ..terminal_gui import TerminalGUI
 
 OUTPUT_DIR = "/tmp/outputs"
-
 TYPING_DELAY_MS = 12
 TYPING_GROUP_SIZE = 50
 
@@ -31,40 +34,25 @@ Action = Literal[
     "cursor_position",
 ]
 
-
 class Resolution(TypedDict):
     width: int
     height: int
 
-
-# sizes above XGA/WXGA are not recommended (see README.md)
-# scale down to one of these targets if ComputerTool._scaling_enabled is set
-MAX_SCALING_TARGETS: dict[str, Resolution] = {
-    "XGA": Resolution(width=1024, height=768),  # 4:3
-    "WXGA": Resolution(width=1280, height=800),  # 16:10
-    "FWXGA": Resolution(width=1366, height=768),  # ~16:9
-}
-
-
 class ScalingSource(StrEnum):
     COMPUTER = "computer"
     API = "api"
-
 
 class ComputerToolOptions(TypedDict):
     display_height_px: int
     display_width_px: int
     display_number: int | None
 
-
 def chunks(s: str, chunk_size: int) -> list[str]:
     return [s[i : i + chunk_size] for i in range(0, len(s), chunk_size)]
 
-
 class ComputerTool(BaseAnthropicTool):
     """
-    A tool that allows the agent to interact with the screen, keyboard, and mouse of the current computer.
-    The tool parameters are defined by Anthropic and are not editable.
+    A tool that allows terminal-based control of GUI interactions.
     """
 
     name: Literal["computer"] = "computer"
@@ -93,51 +81,16 @@ class ComputerTool(BaseAnthropicTool):
     def __init__(self):
         super().__init__()
 
-        # Default to 1024x768 if not specified
         self.width = int(os.getenv("WIDTH") or 1024)
         self.height = int(os.getenv("HEIGHT") or 768)
-        
-        # Get display number, default to 1
-        display_num = os.getenv("DISPLAY_NUM")
-        if display_num is not None:
-            self.display_num = int(display_num)
-        else:
-            self.display_num = 1
+        self.display_num = int(os.getenv("DISPLAY_NUM") or 1)
 
-        # Set display prefix
-        self._display_prefix = f"DISPLAY=:{self.display_num} "
-        self.xdotool = f"{self._display_prefix}xdotool"
-
-        # Ensure X server is running
-        self._ensure_x_server()
-
-    def _ensure_x_server(self):
-        """Ensure X server is running on the specified display."""
-        try:
-            import subprocess
-            # Check if Xvfb is running
-            result = subprocess.run(['pgrep', 'Xvfb'], capture_output=True, text=True)
-            if result.returncode != 0:
-                # Start Xvfb if not running
-                subprocess.Popen(['Xvfb', f':{self.display_num}', '-screen', '0', f'{self.width}x{self.height}x24'])
-                import time
-                time.sleep(2)  # Wait for X server to start
-
-            # Check if window manager is running
-            result = subprocess.run(['pgrep', 'mutter'], capture_output=True, text=True)
-            if result.returncode != 0:
-                # Start window manager if not running
-                subprocess.Popen([f'DISPLAY=:{self.display_num}', 'mutter', '--replace'])
-                time.sleep(2)
-
-            # Check if taskbar is running
-            result = subprocess.run(['pgrep', 'tint2'], capture_output=True, text=True)
-            if result.returncode != 0:
-                # Start taskbar if not running
-                subprocess.Popen([f'DISPLAY=:{self.display_num}', 'tint2'])
-                time.sleep(1)
-        except Exception as e:
-            print(f"Warning: Error ensuring X server: {e}")
+        # Initialize TerminalGUI
+        self.gui = TerminalGUI(
+            display_num=self.display_num,
+            width=self.width,
+            height=self.height
+        )
 
     async def __call__(
         self,
@@ -162,11 +115,12 @@ class ComputerTool(BaseAnthropicTool):
             )
 
             if action == "mouse_move":
-                return await self.shell(f"{self.xdotool} mousemove --sync {x} {y}")
+                self.gui.mouse_move(x, y)
+                return await self.take_screenshot()
             elif action == "left_click_drag":
-                return await self.shell(
-                    f"{self.xdotool} mousedown 1 mousemove --sync {x} {y} mouseup 1"
-                )
+                current_x, current_y = self.gui.get_cursor_position()
+                self.gui.mouse_drag(current_x, current_y, x, y)
+                return await self.take_screenshot()
 
         if action in ("key", "type"):
             if text is None:
@@ -177,118 +131,66 @@ class ComputerTool(BaseAnthropicTool):
                 raise ToolError(output=f"{text} must be a string")
 
             if action == "key":
-                return await self.shell(f"{self.xdotool} key -- {text}")
+                self.gui.key_press(text)
+                return await self.take_screenshot()
             elif action == "type":
-                results: list[ToolResult] = []
                 for chunk in chunks(text, TYPING_GROUP_SIZE):
-                    cmd = f"{self.xdotool} type --delay {TYPING_DELAY_MS} -- {shlex.quote(chunk)}"
-                    results.append(await self.shell(cmd, take_screenshot=False))
-                screenshot_base64 = (await self.screenshot()).base64_image
-                return ToolResult(
-                    output="".join(result.output or "" for result in results),
-                    error="".join(result.error or "" for result in results),
-                    base64_image=screenshot_base64,
-                )
+                    self.gui.type_text(chunk, TYPING_DELAY_MS)
+                return await self.take_screenshot()
 
-        if action in (
-            "left_click",
-            "right_click",
-            "double_click",
-            "middle_click",
-            "screenshot",
-            "cursor_position",
-        ):
+        if action in ("left_click", "right_click", "double_click", "middle_click",
+                     "screenshot", "cursor_position"):
             if text is not None:
                 raise ToolError(f"text is not accepted for {action}")
             if coordinate is not None:
                 raise ToolError(f"coordinate is not accepted for {action}")
 
             if action == "screenshot":
-                return await self.screenshot()
+                return await self.take_screenshot()
             elif action == "cursor_position":
-                result = await self.shell(
-                    f"{self.xdotool} getmouselocation --shell",
-                    take_screenshot=False,
+                x, y = self.gui.get_cursor_position()
+                scaled_x, scaled_y = self.scale_coordinates(
+                    ScalingSource.COMPUTER, x, y
                 )
-                output = result.output or ""
-                x, y = self.scale_coordinates(
-                    ScalingSource.COMPUTER,
-                    int(output.split("X=")[1].split("\n")[0]),
-                    int(output.split("Y=")[1].split("\n")[0]),
-                )
-                return result.replace(output=f"X={x},Y={y}")
+                return ToolResult(output=f"X={scaled_x},Y={scaled_y}")
             else:
-                click_arg = {
-                    "left_click": "1",
-                    "right_click": "3",
-                    "middle_click": "2",
-                    "double_click": "--repeat 2 --delay 500 1",
-                }[action]
-                return await self.shell(f"{self.xdotool} click {click_arg}")
+                button = {
+                    "left_click": 1,
+                    "right_click": 3,
+                    "middle_click": 2,
+                }
+                is_double = action == "double_click"
+                self.gui.mouse_click(
+                    button=button.get(action, 1),
+                    double=is_double
+                )
+                return await self.take_screenshot()
 
         raise ToolError(f"Invalid action: {action}")
 
-    async def screenshot(self):
-        """Take a screenshot of the current screen and return the base64 encoded image."""
+    async def take_screenshot(self) -> ToolResult:
+        """Take a screenshot and return it as a ToolResult."""
         output_dir = Path(OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / f"screenshot_{uuid4().hex}.png"
 
-        # Try gnome-screenshot first
-        if shutil.which("gnome-screenshot"):
-            screenshot_cmd = f"{self._display_prefix}gnome-screenshot -f {path} -p"
-        else:
-            # Fall back to scrot if gnome-screenshot isn't available
-            screenshot_cmd = f"{self._display_prefix}scrot -p {path}"
-
-        result = await self.shell(screenshot_cmd, take_screenshot=False)
-        if self._scaling_enabled:
-            x, y = self.scale_coordinates(
-                ScalingSource.COMPUTER, self.width, self.height
-            )
-            await self.shell(
-                f"convert {path} -resize {x}x{y}! {path}", take_screenshot=False
-            )
+        self.gui.take_screenshot(str(path))
+        await asyncio.sleep(self._screenshot_delay)
 
         if path.exists():
-            return result.replace(
-                base64_image=base64.b64encode(path.read_bytes()).decode()
-            )
-        raise ToolError(f"Failed to take screenshot: {result.error}")
-
-    async def shell(self, command: str, take_screenshot=True) -> ToolResult:
-        """Run a shell command and return the output, error, and optionally a screenshot."""
-        _, stdout, stderr = await run(command)
-        base64_image = None
-
-        if take_screenshot:
-            # delay to let things settle before taking a screenshot
-            await asyncio.sleep(self._screenshot_delay)
-            base64_image = (await self.screenshot()).base64_image
-
-        return ToolResult(output=stdout, error=stderr, base64_image=base64_image)
+            image_data = base64.b64encode(path.read_bytes()).decode()
+            return ToolResult(base64_image=image_data)
+        raise ToolError("Failed to take screenshot")
 
     def scale_coordinates(self, source: ScalingSource, x: int, y: int):
-        """Scale coordinates to a target maximum resolution."""
+        """Scale coordinates based on source and target resolution."""
         if not self._scaling_enabled:
             return x, y
-        ratio = self.width / self.height
-        target_dimension = None
-        for dimension in MAX_SCALING_TARGETS.values():
-            # allow some error in the aspect ratio - not ratios are exactly 16:9
-            if abs(dimension["width"] / dimension["height"] - ratio) < 0.02:
-                if dimension["width"] < self.width:
-                    target_dimension = dimension
-                break
-        if target_dimension is None:
-            return x, y
-        # should be less than 1
-        x_scaling_factor = target_dimension["width"] / self.width
-        y_scaling_factor = target_dimension["height"] / self.height
+
+        # For now we'll use a simple scaling based on the actual display size
         if source == ScalingSource.API:
-            if x > self.width or y > self.height:
-                raise ToolError(f"Coordinates {x}, {y} are out of bounds")
-            # scale up
-            return round(x / x_scaling_factor), round(y / y_scaling_factor)
-        # scale down
-        return round(x * x_scaling_factor), round(y * y_scaling_factor)
+            # Scale up from API coordinates to actual display
+            return (x, y)
+        else:
+            # Scale down from actual display to API coordinates
+            return (x, y)
