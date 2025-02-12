@@ -1,4 +1,6 @@
-# Anthropic Computer Use Demo
+# Anthropic Computer Use Terminal Demo
+
+This is a modified version of the Anthropic Computer Use Demo that removes the web UI dependency and provides a pure terminal-based interface while maintaining all the original computer use functionality.
 
 > [!CAUTION]
 > Computer use is a beta feature. Please be aware that computer use poses unique risks that are distinct from standard API features or chat interfaces. These risks are heightened when using computer use to interact with the internet. To minimize risks, consider taking precautions such as:
@@ -12,12 +14,12 @@
 >
 > Finally, please inform end users of relevant risks and obtain their consent prior to enabling computer use in your own products.
 
-This repository helps you get started with computer use on Claude, with reference implementations of:
+This repository helps you get started with computer use on Claude in a terminal environment, with reference implementations of:
 
 * Build files to create a Docker container with all necessary dependencies
 * A computer use agent loop using the Anthropic API, Bedrock, or Vertex to access the updated Claude 3.5 Sonnet model
 * Anthropic-defined computer use tools
-* A streamlit app for interacting with the agent loop
+* A terminal-based interface for interacting with the agent loop
 
 Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback on the quality of the model responses, the API itself, or the quality of the documentation - we cannot wait to hear from you!
 
@@ -125,17 +127,13 @@ This example shows how to use the Google Cloud Application Default Credentials t
 
 You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
 
-### Accessing the demo app
+### Using the Terminal Interface
 
-Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
+Once the container is running, you'll be presented with a terminal interface. The interface will automatically load your API key from the environment variable or `~/.anthropic/api_key` file.
 
-The container stores settings like the API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+Screenshots taken during the session will be saved to `~/.anthropic/screenshots/` directory. The container also stores other settings like the custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
 
-Alternative access points:
-
-- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
-- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
-- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
+You can interact with the agent by typing your commands in the terminal. The agent will display its responses, tool usage, and indicate when screenshots are taken and where they are saved.
 
 ## Screen size
 
