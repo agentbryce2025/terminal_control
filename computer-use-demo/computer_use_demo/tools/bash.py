@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Optional, Union
 
 from anthropic.types.beta import BetaToolBash20241022Param
 
@@ -109,7 +109,7 @@ class BashTool(BaseAnthropicTool):
     The tool parameters are defined by Anthropic and are not editable.
     """
 
-    _session: _BashSession | None
+    _session: Optional[_BashSession]
     name: ClassVar[Literal["bash"]] = "bash"
     api_type: ClassVar[Literal["bash_20241022"]] = "bash_20241022"
 
@@ -118,7 +118,7 @@ class BashTool(BaseAnthropicTool):
         super().__init__()
 
     async def __call__(
-        self, command: str | None = None, restart: bool = False, **kwargs
+        self, command: Optional[str] = None, restart: bool = False, **kwargs
     ):
         if restart:
             if self._session:
