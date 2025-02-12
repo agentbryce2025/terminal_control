@@ -20,7 +20,7 @@ class BaseAnthropicTool(metaclass=ABCMeta):
         raise NotImplementedError
 
 
-@dataclass(kw_only=True, frozen=True)
+@dataclass(frozen=True)
 class ToolResult:
     """Represents the result of a tool execution."""
 
@@ -28,6 +28,13 @@ class ToolResult:
     error: str | None = None
     base64_image: str | None = None
     system: str | None = None
+
+    def __init__(self, *, output=None, error=None, base64_image=None, system=None):
+        """Initialize with keyword-only arguments."""
+        object.__setattr__(self, 'output', output)
+        object.__setattr__(self, 'error', error)
+        object.__setattr__(self, 'base64_image', base64_image)
+        object.__setattr__(self, 'system', system)
 
     def __bool__(self):
         return any(getattr(self, field.name) for field in fields(self))
