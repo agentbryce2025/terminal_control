@@ -59,7 +59,7 @@ class TerminalGUI:
             # Use AppleScript for mouse movement on macOS
             apple_script = f'''
             tell application "System Events"
-                set mouseLocation to {{{x}, {y}}}
+                set mouseLocation to {{x:{x}, y:{y}}}
             end tell
             '''
             subprocess.run(["osascript", "-e", apple_script])
@@ -72,21 +72,23 @@ class TerminalGUI:
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
             # Use AppleScript for mouse clicks on macOS
-            button_map = {1: "left", 2: "middle", 3: "right"}
-            button_name = button_map.get(button, "left")
+            button_map = {1: "primary", 2: "middle", 3: "secondary"}
+            button_name = button_map.get(button, "primary")
             
             if double:
                 apple_script = f'''
                 tell application "System Events"
-                    click at (get mouse location) using {button_name} button
+                    set currentPosition to mouse location
+                    click at currentPosition
                     delay 0.1
-                    click at (get mouse location) using {button_name} button
+                    click at currentPosition
                 end tell
                 '''
             else:
                 apple_script = f'''
                 tell application "System Events"
-                    click at (get mouse location) using {button_name} button
+                    set currentPosition to mouse location
+                    click at currentPosition
                 end tell
                 '''
             subprocess.run(["osascript", "-e", apple_script])
@@ -104,13 +106,12 @@ class TerminalGUI:
         if os_type == "Darwin":
             apple_script = f'''
             tell application "System Events"
-                set mouseLocation to {{{start_x}, {start_y}}}
+                set mouseLocation to {{x:{start_x}, y:{start_y}}}
                 delay 0.1
-                keystroke (key code 0) using {{command down}}
+                set currentPosition to mouse location
+                click at currentPosition
                 delay 0.1
-                set mouseLocation to {{{end_x}, {end_y}}}
-                delay 0.1
-                keystroke (key code 1) using {{command down}}
+                set mouseLocation to {{x:{end_x}, y:{end_y}}}
             end tell
             '''
             subprocess.run(["osascript", "-e", apple_script])
