@@ -59,7 +59,7 @@ class TerminalGUI:
             # Use AppleScript for mouse movement on macOS
             apple_script = f'''
             tell application "System Events"
-                set mouseLocation to {{x:{x}, y:{y}}}
+                set mouse location to {{{x}, {y}}}
             end tell
             '''
             subprocess.run(["osascript", "-e", apple_script])
@@ -78,17 +78,15 @@ class TerminalGUI:
             if double:
                 apple_script = f'''
                 tell application "System Events"
-                    set currentPosition to mouse location
-                    click at currentPosition
+                    click at (get mouse location)
                     delay 0.1
-                    click at currentPosition
+                    click at (get mouse location)
                 end tell
                 '''
             else:
                 apple_script = f'''
                 tell application "System Events"
-                    set currentPosition to mouse location
-                    click at currentPosition
+                    click at (get mouse location)
                 end tell
                 '''
             subprocess.run(["osascript", "-e", apple_script])
@@ -104,14 +102,22 @@ class TerminalGUI:
         """Click and drag from start coordinates to end coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
+            # First move to start position
+            move_to_start = f'''
+            tell application "System Events"
+                set {{{start_x}, {start_y}}} to mouse location
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", move_to_start])
+            
+            # Then perform the drag operation
             apple_script = f'''
             tell application "System Events"
-                set mouseLocation to {{x:{start_x}, y:{start_y}}}
-                delay 0.1
-                set currentPosition to mouse location
-                click at currentPosition
-                delay 0.1
-                set mouseLocation to {{x:{end_x}, y:{end_y}}}
+                tell process "Finder"
+                    perform action "AXPress" of (first button whose role description is "press") at {{0, 0}}
+                    set {{{end_x}, {end_y}}} to mouse location
+                    perform action "AXRelease" of (first button whose role description is "press") at {{0, 0}}
+                end tell
             end tell
             '''
             subprocess.run(["osascript", "-e", apple_script])
