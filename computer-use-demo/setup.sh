@@ -107,6 +107,9 @@ case "${OS}" in
             brew install node
         fi
         
+        # Store the current directory
+        CURRENT_DIR=$(pwd)
+        
         # Create a specific directory for NoVNC
         mkdir -p ~/.novnc
         cd ~/.novnc
@@ -126,7 +129,7 @@ EOF
         fi
         
         # Return to original directory
-        cd -
+        cd "$CURRENT_DIR"
         
         # For Mac, we'll use Rectangle for window management
         if ! brew list --cask rectangle &>/dev/null; then
@@ -160,25 +163,33 @@ EOF
         ;;
 esac
 
-# Create virtual environment
+# Create and setup virtual environment
+echo "Setting up Python virtual environment..."
 python3 -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
+
+# Upgrade pip
+echo "Upgrading pip..."
+python3 -m pip install --upgrade pip
 
 # Install Python dependencies
+echo "Installing Python dependencies..."
 if [ -f "dev-requirements.txt" ]; then
-    pip install -r dev-requirements.txt
+    python3 -m pip install -r dev-requirements.txt
 fi
 
 if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
+    python3 -m pip install -r requirements.txt
 fi
 
-pip install -e .
+# Install the package in editable mode
+echo "Installing package in development mode..."
+python3 -m pip install -e .
 
 # Install pre-commit hooks if .pre-commit-config.yaml exists
 if [ -f ".pre-commit-config.yaml" ]; then
-    pip install pre-commit
+    echo "Installing pre-commit hooks..."
+    python3 -m pip install pre-commit
     pre-commit install
 fi
 
