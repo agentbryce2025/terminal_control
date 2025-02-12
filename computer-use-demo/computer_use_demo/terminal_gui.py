@@ -54,44 +54,150 @@ class TerminalGUI:
 
     def mouse_move(self, x: int, y: int) -> None:
         """Move mouse cursor to specified coordinates."""
-        subprocess.run(["xdotool", "mousemove", "--sync", str(x), str(y)],
-                      env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            # Use AppleScript for mouse movement on macOS
+            apple_script = f'''
+            tell application "System Events"
+                set mouseLocation to {{{x}, {y}}}
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", apple_script])
+        else:
+            subprocess.run(["xdotool", "mousemove", "--sync", str(x), str(y)],
+                          env={"DISPLAY": self.display})
 
     def mouse_click(self, button: int = 1, double: bool = False) -> None:
         """Click mouse button (1=left, 2=middle, 3=right)."""
-        if double:
-            subprocess.run(["xdotool", "click", "--repeat", "2", "--delay", "500", str(button)],
-                         env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            # Use AppleScript for mouse clicks on macOS
+            if double:
+                apple_script = '''
+                tell application "System Events"
+                    click (get mouse location)
+                    delay 0.1
+                    click (get mouse location)
+                end tell
+                '''
+            else:
+                apple_script = '''
+                tell application "System Events"
+                    click (get mouse location)
+                end tell
+                '''
+            subprocess.run(["osascript", "-e", apple_script])
         else:
-            subprocess.run(["xdotool", "click", str(button)],
-                         env={"DISPLAY": self.display})
+            if double:
+                subprocess.run(["xdotool", "click", "--repeat", "2", "--delay", "500", str(button)],
+                             env={"DISPLAY": self.display})
+            else:
+                subprocess.run(["xdotool", "click", str(button)],
+                             env={"DISPLAY": self.display})
 
     def mouse_drag(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
         """Click and drag from start coordinates to end coordinates."""
-        cmd = ["xdotool", "mousemove", str(start_x), str(start_y),
-               "mousedown", "1",
-               "mousemove", str(end_x), str(end_y),
-               "mouseup", "1"]
-        subprocess.run(cmd, env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            apple_script = f'''
+            tell application "System Events"
+                set mouseLocation to {{{start_x}, {start_y}}}
+                delay 0.1
+                keystroke (key code 0) using {{command down}}
+                delay 0.1
+                set mouseLocation to {{{end_x}, {end_y}}}
+                delay 0.1
+                keystroke (key code 1) using {{command down}}
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", apple_script])
+        else:
+            cmd = ["xdotool", "mousemove", str(start_x), str(start_y),
+                   "mousedown", "1",
+                   "mousemove", str(end_x), str(end_y),
+                   "mouseup", "1"]
+            subprocess.run(cmd, env={"DISPLAY": self.display})
 
     def type_text(self, text: str, delay_ms: int = 12) -> None:
         """Type text with specified delay between keystrokes."""
-        subprocess.run(["xdotool", "type", "--delay", str(delay_ms), text],
-                      env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            apple_script = f'''
+            tell application "System Events"
+                delay {delay_ms/1000}
+                keystroke "{text}"
+            end tell
+            '''
+            subprocess.run(["osascript", "-e", apple_script])
+        else:
+            subprocess.run(["xdotool", "type", "--delay", str(delay_ms), text],
+                          env={"DISPLAY": self.display})
 
     def key_press(self, key: str) -> None:
         """Press a key or key combination."""
-        subprocess.run(["xdotool", "key", key],
-                      env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            # Convert common key names to AppleScript format
+            key_map = {
+                "Return": "return",
+                "space": "space",
+                "Tab": "tab",
+                "BackSpace": "delete",
+                "Delete": "forward delete",
+                "Escape": "escape",
+                "Up": "up arrow",
+                "Down": "down arrow",
+                "Left": "left arrow",
+                "Right": "right arrow",
+            }
+            
+            if "+" in key:
+                # Handle key combinations (e.g., "ctrl+c")
+                parts = key.lower().split("+")
+                modifiers = []
+                for mod in parts[:-1]:
+                    if mod == "ctrl": modifiers.append("command down")
+                    elif mod == "alt": modifiers.append("option down")
+                    elif mod == "shift": modifiers.append("shift down")
+                key = parts[-1]
+                
+                apple_script = f'''
+                tell application "System Events"
+                    key code {ord(key) if len(key) == 1 else key_map.get(key, key)} using {{{", ".join(modifiers)}}}
+                end tell
+                '''
+            else:
+                # Handle single keys
+                key = key_map.get(key, key)
+                apple_script = f'''
+                tell application "System Events"
+                    keystroke "{key}"
+                end tell
+                '''
+            subprocess.run(["osascript", "-e", apple_script])
+        else:
+            subprocess.run(["xdotool", "key", key],
+                          env={"DISPLAY": self.display})
 
     def get_cursor_position(self) -> Tuple[int, int]:
         """Get current cursor position."""
-        output = subprocess.check_output(["xdotool", "getmouselocation", "--shell"],
-                                       env={"DISPLAY": self.display},
-                                       text=True)
-        x = int(output.split("X=")[1].split("\n")[0])
-        y = int(output.split("Y=")[1].split("\n")[0])
-        return (x, y)
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            apple_script = '''
+            tell application "System Events"
+                get mouse location
+            end tell
+            '''
+            output = subprocess.check_output(["osascript", "-e", apple_script], text=True)
+            x, y = map(int, output.strip().split(", "))
+            return (x, y)
+        else:
+            output = subprocess.check_output(["xdotool", "getmouselocation", "--shell"],
+                                           env={"DISPLAY": self.display},
+                                           text=True)
+            x = int(output.split("X=")[1].split("\n")[0])
+            y = int(output.split("Y=")[1].split("\n")[0])
+            return (x, y)
 
     def take_screenshot(self, output_path: str) -> None:
         """Take a screenshot and save it to the specified path."""
