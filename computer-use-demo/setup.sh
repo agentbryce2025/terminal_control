@@ -99,13 +99,40 @@ case "${OS}" in
         }
         
         # Install required packages
-        install_brew_package tigervnc      # VNC server
-        install_brew_package novnc         # HTML5 VNC client
-        install_brew_package mutter        # Window manager
-        install_brew_package firefox       # Firefox browser
+        install_brew_package tiger-vnc     # VNC server
+        
+        # NoVNC - we'll need to handle this differently for Mac
+        echo "Note: NoVNC isn't available via brew. You can install it via npm:"
+        if ! command_exists npm; then
+            echo "Installing Node.js and npm..."
+            brew install node
+        fi
+        npm install -g novnc
+        
+        # For Mac, we'll use yabai as window manager instead of mutter
+        if ! brew tap homebrew/cask-versions &>/dev/null; then
+            brew tap homebrew/cask-versions
+        fi
+        brew install koekeishiya/formulae/yabai
+        
+        # Install Firefox using cask
+        if [ ! -d "/Applications/Firefox.app" ]; then
+            brew install --cask firefox
+        else
+            echo "Firefox is already installed"
+        fi
+        
         install_brew_package xdotool       # X11 automation tool
         install_brew_package imagemagick   # Image manipulation
+        
+        # Install Python Tk support
         brew install python-tk || brew install python-tk@3.9 || echo "Failed to install python-tk, please install manually"
+        
+        # Install additional Mac-specific requirements
+        brew install --cask rectangle      # Window management helper
+        
+        # Start yabai service
+        brew services start yabai
         
         # Create necessary XQuartz configurations
         defaults write org.xquartz.X11 enable_iglx -bool true
