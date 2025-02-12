@@ -101,13 +101,32 @@ case "${OS}" in
         # Install required packages
         install_brew_package tiger-vnc     # VNC server
         
-        # NoVNC - we'll need to handle this differently for Mac
-        echo "Note: NoVNC isn't available via brew. You can install it via npm:"
+        # NoVNC setup for Mac
         if ! command_exists npm; then
             echo "Installing Node.js and npm..."
             brew install node
         fi
-        npm install -g novnc
+        
+        # Create a specific directory for NoVNC
+        mkdir -p ~/.novnc
+        cd ~/.novnc
+        
+        # Install NoVNC locally
+        if [ ! -d "noVNC" ]; then
+            echo "Installing NoVNC..."
+            git clone https://github.com/novnc/noVNC.git
+            cd noVNC
+            git checkout v1.4.0  # Use a stable version
+            # Create a simple launch script
+            cat > launch.sh << 'EOF'
+#!/bin/bash
+./utils/launch.sh --vnc localhost:5900
+EOF
+            chmod +x launch.sh
+        fi
+        
+        # Return to original directory
+        cd -
         
         # For Mac, we'll use Rectangle for window management
         if ! brew list --cask rectangle &>/dev/null; then
