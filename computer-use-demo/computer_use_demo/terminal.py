@@ -27,15 +27,56 @@ class TerminalUI:
         self.custom_system_prompt = ""
         self.hide_images = False
         
+        # Create required directories
+        self._setup_directories()
+        
         # Load API key from environment or config file
-        self.api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if not self.api_key:
-            config_file = Path.home() / ".anthropic" / "api_key"
-            if config_file.exists():
-                self.api_key = config_file.read_text().strip()
-
+        self.api_key = self._load_api_key()
+        
+        # Set up provider and model
         self.provider = APIProvider(os.getenv("API_PROVIDER", "anthropic"))
         self.model = PROVIDER_TO_DEFAULT_MODEL_NAME[self.provider]
+        
+        # Initialize display settings
+        self._setup_display()
+
+    def _setup_directories(self):
+        """Create necessary directories for operation."""
+        home = Path.home()
+        anthropic_dir = home / ".anthropic"
+        screenshots_dir = anthropic_dir / "screenshots"
+        
+        # Create directories if they don't exist
+        anthropic_dir.mkdir(exist_ok=True)
+        screenshots_dir.mkdir(exist_ok=True)
+        
+        # Set appropriate permissions
+        anthropic_dir.chmod(0o755)
+        screenshots_dir.chmod(0o755)
+
+    def _load_api_key(self) -> str:
+        """Load API key from environment or config file."""
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            config_file = Path.home() / ".anthropic" / "api_key"
+            if config_file.exists():
+                api_key = config_file.read_text().strip()
+            
+            if not api_key:
+                print("\nWarning: No API key found in environment or ~/.anthropic/api_key")
+                print("Please set ANTHROPIC_API_KEY environment variable or create ~/.anthropic/api_key")
+                return ""
+        return api_key
+
+    def _setup_display(self):
+        """Set up display environment variables if not already set."""
+        if not os.getenv("DISPLAY"):
+            display_num = os.getenv("DISPLAY_NUM", "1")
+            os.environ["DISPLAY"] = f":{display_num}"
+        if not os.getenv("WIDTH"):
+            os.environ["WIDTH"] = "1024"
+        if not os.getenv("HEIGHT"):
+            os.environ["HEIGHT"] = "768"
 
     def get_user_input(self) -> str:
         """Get input from the user."""
@@ -88,37 +129,125 @@ class TerminalUI:
         print("\nComputer Use Agent Terminal Interface")
         print("----------------------------------")
         
-        if not self.api_key:
-            print("\nError: ANTHROPIC_API_KEY environment variable or ~/.anthropic/api_key file required")
+        # Validate setup
+        if not await self._validate_setup():
             return
 
+        print("\nReady for input. Type 'exit' to quit.")
+        print("Type 'help' for available commands.")
+        
         while True:
-            user_input = self.get_user_input()
-            if not user_input:
-                continue
-
-            # Add user message
-            self.messages.append({
-                "role": "user",
-                "content": [BetaTextBlockParam(type="text", text=user_input)],
-            })
-            self.render_message("User", user_input)
-
-            # Run the sampling loop
             try:
-                self.messages = await sampling_loop(
-                    system_prompt_suffix=self.custom_system_prompt,
-                    model=self.model,
-                    provider=self.provider,
-                    messages=self.messages,
-                    output_callback=self.content_output_callback,
-                    tool_output_callback=self.tool_output_callback,
-                    api_response_callback=self.api_response_callback,
-                    api_key=self.api_key,
-                    only_n_most_recent_images=self.only_n_most_recent_images,
-                )
+                user_input = self.get_user_input()
+                if not user_input:
+                    continue
+                
+                # Handle special commands
+                if user_input.lower() == 'exit':
+                    print("\nExiting...")
+                    break
+                elif user_input.lower() == 'help':
+                    self._show_help()
+                    continue
+                elif user_input.lower() == 'status':
+                    await self._show_status()
+                    continue
+                elif user_input.lower() == 'clear':
+                    self.messages = []
+                    print("\nConversation cleared.")
+                    continue
+
+                # Add user message
+                self.messages.append({
+                    "role": "user",
+                    "content": [BetaTextBlockParam(type="text", text=user_input)],
+                })
+                self.render_message("User", user_input)
+
+                # Run the sampling loop
+                try:
+                    self.messages = await sampling_loop(
+                        system_prompt_suffix=self.custom_system_prompt,
+                        model=self.model,
+                        provider=self.provider,
+                        messages=self.messages,
+                        output_callback=self.content_output_callback,
+                        tool_output_callback=self.tool_output_callback,
+                        api_response_callback=self.api_response_callback,
+                        api_key=self.api_key,
+                        only_n_most_recent_images=self.only_n_most_recent_images,
+                    )
+                except KeyboardInterrupt:
+                    print("\nOperation interrupted by user.")
+                except Exception as e:
+                    print(f"\nError during execution: {str(e)}")
+                    print("You can continue with a new command, or type 'exit' to quit.")
+            
+            except KeyboardInterrupt:
+                print("\nUse 'exit' to quit or continue with a new command.")
             except Exception as e:
-                print(f"\nError during execution: {e}")
+                print(f"\nUnexpected error: {str(e)}")
+                print("You can continue with a new command, or type 'exit' to quit.")
+
+    async def _validate_setup(self) -> bool:
+        """Validate the setup before starting the main loop."""
+        if not self.api_key:
+            print("\nError: ANTHROPIC_API_KEY environment variable or ~/.anthropic/api_key file required")
+            return False
+            
+        try:
+            # Check display connection
+            import subprocess
+            result = subprocess.run(['xdpyinfo'], capture_output=True, text=True)
+            if result.returncode != 0:
+                print("\nWarning: Could not connect to X display. Some features may not work.")
+                print(f"Error: {result.stderr}")
+            
+            # Ensure screenshots directory exists and is writable
+            screenshots_dir = Path.home() / ".anthropic" / "screenshots"
+            if not screenshots_dir.exists():
+                screenshots_dir.mkdir(parents=True)
+            if not os.access(screenshots_dir, os.W_OK):
+                print(f"\nWarning: Cannot write to {screenshots_dir}")
+                return False
+                
+        except Exception as e:
+            print(f"\nWarning: Setup validation error: {str(e)}")
+            print("Some features may not work correctly.")
+        
+        return True
+
+    def _show_help(self):
+        """Show available commands and their descriptions."""
+        print("\nAvailable Commands:")
+        print("  help    - Show this help message")
+        print("  status  - Show current environment status")
+        print("  clear   - Clear conversation history")
+        print("  exit    - Exit the program")
+        print("\nFor general usage:")
+        print("- Type your questions or commands naturally")
+        print("- Use Ctrl+C to interrupt a long-running operation")
+        print("- Screenshots are saved in ~/.anthropic/screenshots/")
+
+    async def _show_status(self):
+        """Show current environment status."""
+        print("\nEnvironment Status:")
+        print(f"Display: {os.getenv('DISPLAY', 'Not set')}")
+        print(f"Resolution: {os.getenv('WIDTH', '?')}x{os.getenv('HEIGHT', '?')}")
+        print(f"API Provider: {self.provider}")
+        print(f"Model: {self.model}")
+        print(f"Messages in history: {len(self.messages)}")
+        
+        # Check X server
+        try:
+            import subprocess
+            result = subprocess.run(['xdpyinfo'], capture_output=True, text=True)
+            if result.returncode == 0:
+                print("X Server: Running")
+            else:
+                print("X Server: Not running or not accessible")
+        except Exception as e:
+            print(f"X Server: Error checking status - {str(e)}")
 
 def main():
     """Entry point for the terminal interface."""
