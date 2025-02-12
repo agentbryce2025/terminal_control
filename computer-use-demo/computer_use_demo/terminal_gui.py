@@ -20,20 +20,29 @@ class TerminalGUI:
         if not os.getenv("DISPLAY"):
             os.environ["DISPLAY"] = self.display
 
-        # Check if Xvfb is running
-        if not self._is_process_running("Xvfb"):
-            subprocess.Popen(["Xvfb", self.display, "-screen", "0", 
-                            f"{self.width}x{self.height}x24"])
-            
-        # Check window manager
-        if not self._is_process_running("mutter"):
-            subprocess.Popen(["mutter", "--replace"], 
-                           env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        
+        if os_type == "Darwin":
+            # For macOS, ensure XQuartz is running
+            if not self._is_process_running("Xquartz"):
+                subprocess.run(["open", "-a", "XQuartz"])
+                # Wait for XQuartz to start
+                subprocess.run(["sleep", "2"])
+        else:
+            # For Linux, check if Xvfb is running
+            if not self._is_process_running("Xvfb"):
+                subprocess.Popen(["Xvfb", self.display, "-screen", "0", 
+                                f"{self.width}x{self.height}x24"])
+                
+            # Check window manager
+            if not self._is_process_running("mutter"):
+                subprocess.Popen(["mutter", "--replace"], 
+                               env={"DISPLAY": self.display})
 
-        # Check taskbar
-        if not self._is_process_running("tint2"):
-            subprocess.Popen(["tint2"], 
-                           env={"DISPLAY": self.display})
+            # Check taskbar
+            if not self._is_process_running("tint2"):
+                subprocess.Popen(["tint2"], 
+                               env={"DISPLAY": self.display})
 
     def _is_process_running(self, process_name: str) -> bool:
         """Check if a process is running."""
@@ -86,11 +95,14 @@ class TerminalGUI:
 
     def take_screenshot(self, output_path: str) -> None:
         """Take a screenshot and save it to the specified path."""
-        if self._is_process_running("gnome-screenshot"):
-            subprocess.run(["gnome-screenshot", "-f", output_path],
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            # Use screencapture on macOS
+            subprocess.run(["screencapture", "-x", output_path],
                          env={"DISPLAY": self.display})
         else:
-            subprocess.run(["scrot", output_path],
+            # Use import on Linux
+            subprocess.run(["import", "-window", "root", output_path],
                          env={"DISPLAY": self.display})
 
     def start_application(self, app_name: str) -> None:
