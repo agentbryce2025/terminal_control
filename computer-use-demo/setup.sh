@@ -25,6 +25,9 @@ if [ "${OS}" = "Darwin" ]; then
     
     # Install other required packages
     brew install imagemagick python-tk@3.9
+    
+    # Source macOS helper functions
+    source ./macos_helpers.sh
 else
     # Original Linux setup code here
     if command -v apt; then
