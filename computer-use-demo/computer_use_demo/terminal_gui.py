@@ -211,26 +211,37 @@ class TerminalGUI:
             try:
                 # Use screencapture (native macOS tool) to take initial screenshot
                 subprocess.run(["screencapture", "-x", temp_path])
-                # Compress with convert (from ImageMagick)
+                # Compress with magick (from ImageMagick 7+)
                 try:
+                    # Try magick command first (ImageMagick 7+)
                     subprocess.run([
-                        "convert", temp_path,
+                        "magick", temp_path,
                         "-quality", "60",
                         "-resize", "1024x768>",
                         output_path
                     ])
                     os.remove(temp_path)
                 except FileNotFoundError:
-                    # If ImageMagick isn't available, try to use sips (built into macOS)
-                    subprocess.run([
-                        "sips",
-                        "-s", "format", "jpeg",
-                        "-s", "formatOptions", "60",
-                        "--resampleHeightWidth", "768", "1024",
-                        temp_path,
-                        "--out", output_path
-                    ])
-                    os.remove(temp_path)
+                    try:
+                        # Fall back to convert command (ImageMagick 6)
+                        subprocess.run([
+                            "convert", temp_path,
+                            "-quality", "60",
+                            "-resize", "1024x768>",
+                            output_path
+                        ])
+                        os.remove(temp_path)
+                    except FileNotFoundError:
+                        # If ImageMagick isn't available, try to use sips (built into macOS)
+                        subprocess.run([
+                            "sips",
+                            "-s", "format", "jpeg",
+                            "-s", "formatOptions", "60",
+                            "--resampleHeightWidth", "768", "1024",
+                            temp_path,
+                            "--out", output_path
+                        ])
+                        os.remove(temp_path)
             except FileNotFoundError:
                 raise RuntimeError("Screenshot failed. On macOS, ensure 'screencapture' is available (should be built-in)")
         else:
@@ -243,12 +254,22 @@ class TerminalGUI:
                     subprocess.run(["import", "-window", "root", output_path],
                                 env={"DISPLAY": self.display})
                     # Compress with convert
-                    subprocess.run([
-                        "convert", output_path,
-                        "-quality", "60",
-                        "-resize", "1024x768>",
-                        temp_path
-                    ])
+                    try:
+                        # Try magick command first (ImageMagick 7+)
+                        subprocess.run([
+                            "magick", output_path,
+                            "-quality", "60",
+                            "-resize", "1024x768>",
+                            temp_path
+                        ])
+                    except FileNotFoundError:
+                        # Fall back to convert command (ImageMagick 6)
+                        subprocess.run([
+                            "convert", output_path,
+                            "-quality", "60",
+                            "-resize", "1024x768>",
+                            temp_path
+                        ])
                     os.rename(temp_path, output_path)
                 except FileNotFoundError:
                     raise RuntimeError("No screenshot tool found. On Linux, please install either 'scrot' or 'imagemagick'")
