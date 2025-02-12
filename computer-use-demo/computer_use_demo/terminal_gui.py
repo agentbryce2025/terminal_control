@@ -7,6 +7,11 @@ import os
 import subprocess
 from typing import Optional, Tuple, Union
 
+try:
+    from .macos_gui import MacOSGUI
+except ImportError:
+    MacOSGUI = None
+
 class TerminalGUI:
     def __init__(self, display_num: int = 1, width: int = 1024, height: int = 768):
         self.display_num = display_num
@@ -55,14 +60,8 @@ class TerminalGUI:
     def mouse_move(self, x: int, y: int) -> None:
         """Move mouse cursor to specified coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin":
-            # Use AppleScript for mouse movement on macOS
-            apple_script = f'''
-            tell application "System Events"
-                set mouse location to {{{x}, {y}}}
-            end tell
-            '''
-            subprocess.run(["osascript", "-e", apple_script])
+        if os_type == "Darwin" and MacOSGUI is not None:
+            MacOSGUI.move_mouse(x, y)
         else:
             subprocess.run(["xdotool", "mousemove", "--sync", str(x), str(y)],
                           env={"DISPLAY": self.display})
@@ -70,26 +69,14 @@ class TerminalGUI:
     def mouse_click(self, button: int = 1, double: bool = False) -> None:
         """Click mouse button (1=left, 2=middle, 3=right)."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin":
-            # Use AppleScript for mouse clicks on macOS
-            button_map = {1: "primary", 2: "middle", 3: "secondary"}
-            button_name = button_map.get(button, "primary")
-            
+        if os_type == "Darwin" and MacOSGUI is not None:
+            current_app = subprocess.check_output(["osascript", "-e", 'tell application "System Events" to get name of first process whose frontmost is true']).decode().strip()
             if double:
-                apple_script = f'''
-                tell application "System Events"
-                    click at (get mouse location)
-                    delay 0.1
-                    click at (get mouse location)
-                end tell
-                '''
+                MacOSGUI.click_element(current_app, "double click")
+                time.sleep(0.1)
+                MacOSGUI.click_element(current_app, "double click")
             else:
-                apple_script = f'''
-                tell application "System Events"
-                    click at (get mouse location)
-                end tell
-                '''
-            subprocess.run(["osascript", "-e", apple_script])
+                MacOSGUI.click_element(current_app, "click")
         else:
             if double:
                 subprocess.run(["xdotool", "click", "--repeat", "2", "--delay", "500", str(button)],
@@ -101,26 +88,33 @@ class TerminalGUI:
     def mouse_drag(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
         """Click and drag from start coordinates to end coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin":
-            # First move to start position
-            move_to_start = f'''
-            tell application "System Events"
-                set {{{start_x}, {start_y}}} to mouse location
-            end tell
-            '''
-            subprocess.run(["osascript", "-e", move_to_start])
+        if os_type == "Darwin" and MacOSGUI is not None:
+            # Move to start position
+            MacOSGUI.move_mouse(start_x, start_y)
+            time.sleep(0.1)
             
-            # Then perform the drag operation
-            apple_script = f'''
-            tell application "System Events"
-                tell process "Finder"
-                    perform action "AXPress" of (first button whose role description is "press") at {{0, 0}}
-                    set {{{end_x}, {end_y}}} to mouse location
-                    perform action "AXRelease" of (first button whose role description is "press") at {{0, 0}}
+            # Click and hold
+            current_app = subprocess.check_output(["osascript", "-e", 'tell application "System Events" to get name of first process whose frontmost is true']).decode().strip()
+            subprocess.run(["osascript", "-e", f'''
+                tell application "System Events"
+                    tell process "{current_app}"
+                        perform action "AXPress" of (first button whose role description is "press") at {{0, 0}}
+                    end tell
                 end tell
-            end tell
-            '''
-            subprocess.run(["osascript", "-e", apple_script])
+            '''])
+            
+            # Move to end position
+            MacOSGUI.move_mouse(end_x, end_y)
+            time.sleep(0.1)
+            
+            # Release
+            subprocess.run(["osascript", "-e", f'''
+                tell application "System Events"
+                    tell process "{current_app}"
+                        perform action "AXRelease" of (first button whose role description is "press") at {{0, 0}}
+                    end tell
+                end tell
+            '''])
         else:
             cmd = ["xdotool", "mousemove", str(start_x), str(start_y),
                    "mousedown", "1",
@@ -285,10 +279,10 @@ class TerminalGUI:
         """Start an application."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            # On macOS, use AppleScript to launch applications
+            # On macOS, use the 'open' command
             app_name = app_name.lower()
             
-            # Map common application names to their macOS equivalents
+            # Map common application names
             app_map = {
                 "firefox": "Firefox",
                 "firefox-esr": "Firefox",
@@ -300,21 +294,13 @@ class TerminalGUI:
             
             app_name = app_map.get(app_name, app_name.capitalize())
             
-            if url and app_name in ["Firefox", "Google Chrome", "Safari"]:
-                apple_script = f'''
-                tell application "{app_name}"
-                    activate
-                    open location "{url}"
-                end tell
-                '''
+            if url:
+                # Open URL with the specified application
+                subprocess.run(["open", "-a", app_name, url])
             else:
-                apple_script = f'''
-                tell application "{app_name}"
-                    activate
-                end tell
-                '''
+                # Just open the application
+                subprocess.run(["open", "-a", app_name])
             
-            subprocess.run(["osascript", "-e", apple_script])
             # Give the application a moment to start
             subprocess.run(["sleep", "2"])
         else:
