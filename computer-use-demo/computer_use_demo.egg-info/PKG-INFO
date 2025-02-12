@@ -12,3 +12,9 @@ Requires-Dist: pillow
 Requires-Dist: opencv-python
 Requires-Dist: python-xlib
 Requires-Dist: PyAutoGUI
+Provides-Extra: dev
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Requires-Dist: pyright; extra == "dev"
+Requires-Dist: ruff; extra == "dev"

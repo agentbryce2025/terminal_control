@@ -7,3 +7,10 @@ pillow
 opencv-python
 python-xlib
 PyAutoGUI
+
+[dev]
+pre-commit
+pytest
+pytest-asyncio
+pyright
+ruff

@@ -3,8 +3,10 @@ README.md
 pyproject.toml
 setup.cfg
 computer_use_demo/__init__.py
+computer_use_demo/compat.py
 computer_use_demo/loop.py
 computer_use_demo/terminal.py
+computer_use_demo/terminal_gui.py
 computer_use_demo.egg-info/PKG-INFO
 computer_use_demo.egg-info/SOURCES.txt
 computer_use_demo.egg-info/dependency_links.txt
