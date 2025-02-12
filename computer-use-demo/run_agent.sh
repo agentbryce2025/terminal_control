@@ -2,21 +2,65 @@
 
 OS="$(uname -s)"
 
+function open_url() {
+    local url="$1"
+    if [ "${OS}" = "Darwin" ]; then
+        # For macOS, use AppleScript to control Firefox
+        osascript <<EOF
+            tell application "Firefox"
+                activate
+                delay 1
+                open location "$url"
+            end tell
+EOF
+    else
+        # For Linux, use the original method
+        DISPLAY=:1 firefox "$url"
+    fi
+}
+
+function type_text() {
+    local text="$1"
+    if [ "${OS}" = "Darwin" ]; then
+        # For macOS, use AppleScript to type text
+        osascript <<EOF
+            tell application "System Events"
+                keystroke "$text"
+            end tell
+EOF
+    else
+        # For Linux, use xdotool
+        DISPLAY=:1 xdotool type "$text"
+    fi
+}
+
+function press_key() {
+    local key="$1"
+    if [ "${OS}" = "Darwin" ]; then
+        # For macOS, use AppleScript to press keys
+        osascript <<EOF
+            tell application "System Events"
+                key code $key
+            end tell
+EOF
+    else
+        # For Linux, use xdotool
+        DISPLAY=:1 xdotool key "$key"
+    fi
+}
+
 if [ "${OS}" = "Darwin" ]; then
-    # On macOS, we don't need X11/VNC setup
+    # On macOS, we'll use direct browser control
     echo "Setting up macOS environment..."
     
     # Set screen resolution
     export WIDTH=1024
     export HEIGHT=768
     
-    # Request accessibility permissions if needed
-    echo "Checking accessibility permissions..."
-    osascript -e 'tell application "System Events" to get name of first process whose frontmost is true' &>/dev/null || {
-        echo "Please grant accessibility permissions to Terminal in System Preferences > Security & Privacy > Privacy > Accessibility"
-        open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        read -p "Press Enter after granting permissions..."
-    }
+    # Export the helper functions
+    export -f open_url
+    export -f type_text
+    export -f press_key
 else
     # For Linux, use the original X11/VNC setup
     echo "Starting VNC and X server setup..."

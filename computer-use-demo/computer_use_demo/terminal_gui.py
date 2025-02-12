@@ -5,12 +5,8 @@ This module provides terminal-based equivalents for GUI interactions.
 
 import os
 import subprocess
+import time
 from typing import Optional, Tuple, Union
-
-try:
-    from .macos_gui import MacOSGUI
-except ImportError:
-    MacOSGUI = None
 
 class TerminalGUI:
     def __init__(self, display_num: int = 1, width: int = 1024, height: int = 768):
@@ -18,38 +14,12 @@ class TerminalGUI:
         self.width = width
         self.height = height
         self.display = f":{display_num}"
-        self._last_x = 0
-        self._last_y = 0
         self._ensure_x_server()
 
     def _ensure_x_server(self):
         """Ensure X server and required components are running."""
         if not os.getenv("DISPLAY"):
             os.environ["DISPLAY"] = self.display
-
-        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        
-        if os_type == "Darwin":
-            # For macOS, ensure XQuartz is running
-            if not self._is_process_running("Xquartz"):
-                subprocess.run(["open", "-a", "XQuartz"])
-                # Wait for XQuartz to start
-                subprocess.run(["sleep", "2"])
-        else:
-            # For Linux, check if Xvfb is running
-            if not self._is_process_running("Xvfb"):
-                subprocess.Popen(["Xvfb", self.display, "-screen", "0", 
-                                f"{self.width}x{self.height}x24"])
-                
-            # Check window manager
-            if not self._is_process_running("mutter"):
-                subprocess.Popen(["mutter", "--replace"], 
-                               env={"DISPLAY": self.display})
-
-            # Check taskbar
-            if not self._is_process_running("tint2"):
-                subprocess.Popen(["tint2"], 
-                               env={"DISPLAY": self.display})
 
     def _is_process_running(self, process_name: str) -> bool:
         """Check if a process is running."""
@@ -63,9 +33,8 @@ class TerminalGUI:
         """Move mouse cursor to specified coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            # Instead of moving the mouse, we'll store the coordinates for later use
-            self._last_x = x
-            self._last_y = y
+            # On macOS, we don't actually move the mouse
+            pass
         else:
             subprocess.run(["xdotool", "mousemove", "--sync", str(x), str(y)],
                           env={"DISPLAY": self.display})
@@ -74,34 +43,8 @@ class TerminalGUI:
         """Click mouse button (1=left, 2=middle, 3=right)."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            # On macOS, use direct application control instead of mouse movement
-            script = f'''
-                tell application "System Events"
-                    tell process "Firefox"
-                        click UI element at position {{{self._last_x}, {self._last_y}}}
-                    end tell
-                end tell
-            '''
-            if double:
-                script = f'''
-                    tell application "System Events"
-                        tell process "Firefox"
-                            click UI element at position {{{self._last_x}, {self._last_y}}}
-                            delay 0.1
-                            click UI element at position {{{self._last_x}, {self._last_y}}}
-                        end tell
-                    end tell
-                '''
-            try:
-                subprocess.run(["osascript", "-e", script])
-            except subprocess.CalledProcessError:
-                # If Firefox-specific click fails, try general UI click
-                script = f'''
-                    tell application "System Events"
-                        click at {{{self._last_x}, {self._last_y}}}
-                    end tell
-                '''
-                subprocess.run(["osascript", "-e", script])
+            # On macOS, we use direct browser control instead
+            pass
         else:
             if double:
                 subprocess.run(["xdotool", "click", "--repeat", "2", "--delay", "500", str(button)],
@@ -113,33 +56,9 @@ class TerminalGUI:
     def mouse_drag(self, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
         """Click and drag from start coordinates to end coordinates."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin" and MacOSGUI is not None:
-            # Move to start position
-            MacOSGUI.move_mouse(start_x, start_y)
-            time.sleep(0.1)
-            
-            # Click and hold
-            current_app = subprocess.check_output(["osascript", "-e", 'tell application "System Events" to get name of first process whose frontmost is true']).decode().strip()
-            subprocess.run(["osascript", "-e", f'''
-                tell application "System Events"
-                    tell process "{current_app}"
-                        perform action "AXPress" of (first button whose role description is "press") at {{0, 0}}
-                    end tell
-                end tell
-            '''])
-            
-            # Move to end position
-            MacOSGUI.move_mouse(end_x, end_y)
-            time.sleep(0.1)
-            
-            # Release
-            subprocess.run(["osascript", "-e", f'''
-                tell application "System Events"
-                    tell process "{current_app}"
-                        perform action "AXRelease" of (first button whose role description is "press") at {{0, 0}}
-                    end tell
-                end tell
-            '''])
+        if os_type == "Darwin":
+            # On macOS, we don't use mouse dragging
+            pass
         else:
             cmd = ["xdotool", "mousemove", str(start_x), str(start_y),
                    "mousedown", "1",
@@ -151,95 +70,58 @@ class TerminalGUI:
         """Type text with specified delay between keystrokes."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            apple_script = f'''
-            tell application "System Events"
-                delay {delay_ms/1000}
-                keystroke "{text}"
-            end tell
-            '''
-            subprocess.run(["osascript", "-e", apple_script])
+            # Use the type_text helper function
+            escaped_text = text.replace("'", "'\\''")
+            subprocess.run(["/bin/bash", "-c", f"type_text '{escaped_text}'"])
+            time.sleep(delay_ms / 1000)  # Convert ms to seconds
         else:
             subprocess.run(["xdotool", "type", "--delay", str(delay_ms), text],
                           env={"DISPLAY": self.display})
 
     def key_press(self, key: str) -> None:
-        """Press a key or key combination."""
+        """Press a key combination."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
-            # Convert common key names to AppleScript format
+            # Map common keys to macOS key codes
             key_map = {
-                "Return": "return",
-                "space": "space",
-                "Tab": "tab",
-                "BackSpace": "delete",
-                "Delete": "forward delete",
-                "Escape": "escape",
-                "Up": "up arrow",
-                "Down": "down arrow",
-                "Left": "left arrow",
-                "Right": "right arrow",
+                "Return": "36",
+                "space": "49",
+                "Tab": "48",
+                "BackSpace": "51",
+                "Delete": "117",
+                "Escape": "53",
+                "Up": "126",
+                "Down": "125",
+                "Left": "123",
+                "Right": "124",
             }
             
             if "+" in key:
-                # Handle key combinations (e.g., "ctrl+c")
+                # Handle key combinations by converting to individual presses
                 parts = key.lower().split("+")
-                modifiers = []
-                for mod in parts[:-1]:
-                    if mod == "ctrl": modifiers.append("command down")
-                    elif mod == "alt": modifiers.append("option down")
-                    elif mod == "shift": modifiers.append("shift down")
-                key = parts[-1]
-                
-                apple_script = f'''
-                tell application "System Events"
-                    key code {ord(key) if len(key) == 1 else key_map.get(key, key)} using {{{", ".join(modifiers)}}}
-                end tell
-                '''
+                for part in parts:
+                    key_code = key_map.get(part, str(ord(part)))
+                    subprocess.run(["/bin/bash", "-c", f"press_key {key_code}"])
+                    time.sleep(0.1)
             else:
                 # Handle single keys
-                key = key_map.get(key, key)
-                apple_script = f'''
-                tell application "System Events"
-                    keystroke "{key}"
-                end tell
-                '''
-            subprocess.run(["osascript", "-e", apple_script])
+                key_code = key_map.get(key, str(ord(key)))
+                subprocess.run(["/bin/bash", "-c", f"press_key {key_code}"])
         else:
             subprocess.run(["xdotool", "key", key],
                           env={"DISPLAY": self.display})
 
-    def get_cursor_position(self) -> Tuple[int, int]:
-        """Get current cursor position."""
-        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
-        if os_type == "Darwin":
-            apple_script = '''
-            tell application "System Events"
-                get mouse location
-            end tell
-            '''
-            output = subprocess.check_output(["osascript", "-e", apple_script], text=True)
-            x, y = map(int, output.strip().split(", "))
-            return (x, y)
-        else:
-            output = subprocess.check_output(["xdotool", "getmouselocation", "--shell"],
-                                           env={"DISPLAY": self.display},
-                                           text=True)
-            x = int(output.split("X=")[1].split("\n")[0])
-            y = int(output.split("Y=")[1].split("\n")[0])
-            return (x, y)
-
     def take_screenshot(self, output_path: str) -> None:
-        """Take a screenshot and save it to the specified path."""
+        """Take a screenshot of the entire screen."""
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         temp_path = output_path + ".temp"
         
         if os_type == "Darwin":
             try:
-                # Use screencapture (native macOS tool) to take initial screenshot
+                # Use screencapture (native macOS tool) to take screenshot
                 subprocess.run(["screencapture", "-x", temp_path])
                 # Compress with magick (from ImageMagick 7+)
                 try:
-                    # Try magick command first (ImageMagick 7+)
                     subprocess.run([
                         "magick", temp_path,
                         "-quality", "60",
@@ -247,27 +129,9 @@ class TerminalGUI:
                         output_path
                     ])
                     os.remove(temp_path)
-                except FileNotFoundError:
-                    try:
-                        # Fall back to convert command (ImageMagick 6)
-                        subprocess.run([
-                            "convert", temp_path,
-                            "-quality", "60",
-                            "-resize", "1024x768>",
-                            output_path
-                        ])
-                        os.remove(temp_path)
-                    except FileNotFoundError:
-                        # If ImageMagick isn't available, try to use sips (built into macOS)
-                        subprocess.run([
-                            "sips",
-                            "-s", "format", "jpeg",
-                            "-s", "formatOptions", "60",
-                            "--resampleHeightWidth", "768", "1024",
-                            temp_path,
-                            "--out", output_path
-                        ])
-                        os.remove(temp_path)
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    # If compression fails, use the original screenshot
+                    os.rename(temp_path, output_path)
             except FileNotFoundError:
                 raise RuntimeError("Screenshot failed. On macOS, ensure 'screencapture' is available (should be built-in)")
         else:
@@ -279,23 +143,13 @@ class TerminalGUI:
                 try:
                     subprocess.run(["import", "-window", "root", output_path],
                                 env={"DISPLAY": self.display})
-                    # Compress with convert
-                    try:
-                        # Try magick command first (ImageMagick 7+)
-                        subprocess.run([
-                            "magick", output_path,
-                            "-quality", "60",
-                            "-resize", "1024x768>",
-                            temp_path
-                        ])
-                    except FileNotFoundError:
-                        # Fall back to convert command (ImageMagick 6)
-                        subprocess.run([
-                            "convert", output_path,
-                            "-quality", "60",
-                            "-resize", "1024x768>",
-                            temp_path
-                        ])
+                    # Compress with magick
+                    subprocess.run([
+                        "magick", output_path,
+                        "-quality", "60",
+                        "-resize", "1024x768>",
+                        temp_path
+                    ])
                     os.rename(temp_path, output_path)
                 except FileNotFoundError:
                     raise RuntimeError("No screenshot tool found. On Linux, please install either 'scrot' or 'imagemagick'")
@@ -319,26 +173,11 @@ class TerminalGUI:
             app_name = app_map.get(app_name, app_name.capitalize())
             
             if url:
-                # Try opening URL directly with the app
-                script = f'''
-                    tell application "{app_name}"
-                        activate
-                        open location "{url}"
-                    end tell
-                '''
-                try:
-                    subprocess.run(["osascript", "-e", script])
-                except subprocess.CalledProcessError:
-                    # If direct URL opening fails, just open the app
-                    subprocess.run(["open", "-a", app_name])
+                # Use the open_url helper function
+                subprocess.run(["/bin/bash", "-c", f"open_url '{url}'"])
             else:
-                # Just open and activate the app
-                script = f'''
-                    tell application "{app_name}"
-                        activate
-                    end tell
-                '''
-                subprocess.run(["osascript", "-e", script])
+                # Just open the app
+                subprocess.run(["open", "-a", app_name])
             
             # Give the application a moment to start/activate
             time.sleep(2)
