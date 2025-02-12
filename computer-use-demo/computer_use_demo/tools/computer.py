@@ -6,7 +6,7 @@ import asyncio
 import base64
 import os
 import shlex
-from enum import StrEnum
+from ..compat import StrEnum
 from pathlib import Path
 from typing import Literal, TypedDict
 from uuid import uuid4
