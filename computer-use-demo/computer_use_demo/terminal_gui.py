@@ -72,18 +72,21 @@ class TerminalGUI:
         os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
         if os_type == "Darwin":
             # Use AppleScript for mouse clicks on macOS
+            button_map = {1: "left", 2: "middle", 3: "right"}
+            button_name = button_map.get(button, "left")
+            
             if double:
-                apple_script = '''
+                apple_script = f'''
                 tell application "System Events"
-                    click (get mouse location)
+                    click at (get mouse location) using {button_name} button
                     delay 0.1
-                    click (get mouse location)
+                    click at (get mouse location) using {button_name} button
                 end tell
                 '''
             else:
-                apple_script = '''
+                apple_script = f'''
                 tell application "System Events"
-                    click (get mouse location)
+                    click at (get mouse location) using {button_name} button
                 end tell
                 '''
             subprocess.run(["osascript", "-e", apple_script])
@@ -250,6 +253,44 @@ class TerminalGUI:
                 except FileNotFoundError:
                     raise RuntimeError("No screenshot tool found. On Linux, please install either 'scrot' or 'imagemagick'")
 
-    def start_application(self, app_name: str) -> None:
+    def start_application(self, app_name: str, url: str = None) -> None:
         """Start an application."""
-        subprocess.Popen([app_name], env={"DISPLAY": self.display})
+        os_type = subprocess.check_output(["uname", "-s"]).decode().strip()
+        if os_type == "Darwin":
+            # On macOS, use AppleScript to launch applications
+            app_name = app_name.lower()
+            
+            # Map common application names to their macOS equivalents
+            app_map = {
+                "firefox": "Firefox",
+                "firefox-esr": "Firefox",
+                "chrome": "Google Chrome",
+                "chromium": "Google Chrome",
+                "safari": "Safari",
+                "terminal": "Terminal",
+            }
+            
+            app_name = app_map.get(app_name, app_name.capitalize())
+            
+            if url and app_name in ["Firefox", "Google Chrome", "Safari"]:
+                apple_script = f'''
+                tell application "{app_name}"
+                    activate
+                    open location "{url}"
+                end tell
+                '''
+            else:
+                apple_script = f'''
+                tell application "{app_name}"
+                    activate
+                end tell
+                '''
+            
+            subprocess.run(["osascript", "-e", apple_script])
+            # Give the application a moment to start
+            subprocess.run(["sleep", "2"])
+        else:
+            if url and app_name in ["firefox", "firefox-esr", "chrome", "chromium"]:
+                subprocess.Popen([app_name, url], env={"DISPLAY": self.display})
+            else:
+                subprocess.Popen([app_name], env={"DISPLAY": self.display})
